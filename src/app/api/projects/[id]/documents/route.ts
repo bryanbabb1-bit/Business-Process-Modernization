@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import path from "path";
 import fs from "fs/promises";
+import { logError } from "@/lib/logger";
 import {
   extractText,
   getProjectUploadDir,
@@ -37,7 +38,7 @@ export async function GET(
 
     return NextResponse.json(documents);
   } catch (error) {
-    console.error("[GET /api/projects/[id]/documents]", error);
+    logError("[GET /api/projects/[id]/documents]", error);
     return NextResponse.json(
       { error: "Failed to fetch documents" },
       { status: 500 }
@@ -137,7 +138,7 @@ export async function POST(
       { status: 201 }
     );
   } catch (error) {
-    console.error("[POST /api/projects/[id]/documents]", error);
+    logError("[POST /api/projects/[id]/documents]", error);
     return NextResponse.json(
       { error: "Failed to upload document" },
       { status: 500 }
@@ -192,7 +193,7 @@ export async function DELETE(
         { status: 404 }
       );
     }
-    console.error("[DELETE /api/projects/[id]/documents]", error);
+    logError("[DELETE /api/projects/[id]/documents]", error);
     return NextResponse.json(
       { error: "Failed to delete document" },
       { status: 500 }

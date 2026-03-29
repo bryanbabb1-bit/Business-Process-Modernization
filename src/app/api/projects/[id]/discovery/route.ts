@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { Prisma } from "@prisma/client";
+import { logError } from "@/lib/logger";
 
 /**
  * Validate that a value is either a valid JSON string or a JSON-serializable value,
@@ -95,7 +96,7 @@ export async function PUT(
         { status: 404 }
       );
     }
-    console.error("[PUT /api/projects/[id]/discovery]", error);
+    logError("[PUT /api/projects/[id]/discovery]", error);
     return NextResponse.json(
       { error: "Failed to update discovery data" },
       { status: 500 }
@@ -124,7 +125,7 @@ export async function GET(
 
     return NextResponse.json(discovery);
   } catch (error) {
-    console.error("[GET /api/projects/[id]/discovery]", error);
+    logError("[GET /api/projects/[id]/discovery]", error);
     return NextResponse.json(
       { error: "Failed to fetch discovery data" },
       { status: 500 }

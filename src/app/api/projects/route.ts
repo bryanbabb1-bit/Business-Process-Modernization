@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { INDUSTRIES, COMPANY_SIZES } from "@/types";
+import { logError } from "@/lib/logger";
 
 // GET /api/projects - List all projects
 export async function GET() {
@@ -11,7 +12,7 @@ export async function GET() {
     });
     return NextResponse.json(projects);
   } catch (error) {
-    console.error("[GET /api/projects]", error);
+    logError("GET /api/projects", error);
     return NextResponse.json(
       { error: "Failed to fetch projects" },
       { status: 500 }
@@ -107,7 +108,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(project, { status: 201 });
   } catch (error) {
-    console.error("[POST /api/projects]", error);
+    logError("POST /api/projects", error);
     return NextResponse.json(
       { error: "Failed to create project" },
       { status: 500 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { Prisma } from "@prisma/client";
+import { logError } from "@/lib/logger";
 
 const VALID_STATUSES = [
   "discovery",
@@ -51,7 +52,7 @@ export async function GET(
 
     return NextResponse.json(project);
   } catch (error) {
-    console.error("[GET /api/projects/[id]]", error);
+    logError("[GET /api/projects/[id]]", error);
     return NextResponse.json(
       { error: "Failed to fetch project" },
       { status: 500 }
@@ -146,7 +147,7 @@ export async function PATCH(
         { status: 404 }
       );
     }
-    console.error("[PATCH /api/projects/[id]]", error);
+    logError("[PATCH /api/projects/[id]]", error);
     return NextResponse.json(
       { error: "Failed to update project" },
       { status: 500 }
@@ -175,7 +176,7 @@ export async function DELETE(
         { status: 404 }
       );
     }
-    console.error("[DELETE /api/projects/[id]]", error);
+    logError("[DELETE /api/projects/[id]]", error);
     return NextResponse.json(
       { error: "Failed to delete project" },
       { status: 500 }
