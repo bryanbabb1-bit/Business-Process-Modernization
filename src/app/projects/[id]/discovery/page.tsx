@@ -34,7 +34,12 @@ import type {
 
 function safeParse<T>(raw: string, fallback: T): { value: T; error: boolean } {
   try {
-    return { value: JSON.parse(raw) as T, error: false };
+    const parsed = JSON.parse(raw) as T;
+    // Merge with fallback to ensure all expected fields exist
+    if (fallback && typeof fallback === "object" && !Array.isArray(fallback)) {
+      return { value: { ...fallback, ...parsed }, error: false };
+    }
+    return { value: parsed, error: false };
   } catch {
     console.error("Failed to parse saved discovery data:", raw.slice(0, 200));
     return { value: fallback, error: true };
