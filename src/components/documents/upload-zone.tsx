@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, useRef } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import { Upload, FileUp, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +16,15 @@ function getExtension(name: string): string {
   return i >= 0 ? name.slice(i).toLowerCase() : "";
 }
 
+let uploadCounter = 0;
+
+interface UploadEntry {
+  id: string;
+  name: string;
+  progress: number;
+  error?: string;
+}
+
 interface UploadZoneProps {
   projectId: string;
   onUploadComplete: () => void;
@@ -23,39 +32,49 @@ interface UploadZoneProps {
 
 export function UploadZone({ projectId, onUploadComplete }: UploadZoneProps) {
   const [isDragOver, setIsDragOver] = useState(false);
-  const [uploads, setUploads] = useState<
-    { name: string; progress: number; error?: string }[]
-  >([]);
+  const [uploads, setUploads] = useState<UploadEntry[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
+  const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      timersRef.current.forEach(clearTimeout);
+      timersRef.current.clear();
+    };
+  }, []);
 
   const uploadFile = useCallback(
     async (file: File) => {
       const ext = getExtension(file.name);
+      const entryId = `upload-${++uploadCounter}`;
+
       if (!ALLOWED_EXTENSIONS.has(ext)) {
         setUploads((prev) => [
           ...prev,
-          { name: file.name, progress: 0, error: "File type not supported" },
+          { id: entryId, name: file.name, progress: 0, error: "File type not supported" },
         ]);
         return;
       }
       if (file.size > MAX_FILE_SIZE) {
         setUploads((prev) => [
           ...prev,
-          { name: file.name, progress: 0, error: "File exceeds 10MB limit" },
+          { id: entryId, name: file.name, progress: 0, error: "File exceeds 10MB limit" },
         ]);
         return;
       }
 
-      setUploads((prev) => [...prev, { name: file.name, progress: 10 }]);
+      setUploads((prev) => [...prev, { id: entryId, name: file.name, progress: 10 }]);
 
       const formData = new FormData();
       formData.append("file", file);
 
       try {
         setUploads((prev) =>
-          prev.map((u) =>
-            u.name === file.name ? { ...u, progress: 50 } : u
-          )
+          prev.map((u) => (u.id === entryId ? { ...u, progress: 50 } : u))
         );
 
         const res = await fetch(`/api/projects/${projectId}/documents`, {
@@ -68,26 +87,28 @@ export function UploadZone({ projectId, onUploadComplete }: UploadZoneProps) {
           throw new Error(data.error || "Upload failed");
         }
 
+        if (!mountedRef.current) return;
+
         setUploads((prev) =>
-          prev.map((u) =>
-            u.name === file.name ? { ...u, progress: 100 } : u
-          )
+          prev.map((u) => (u.id === entryId ? { ...u, progress: 100 } : u))
         );
 
-        // Brief delay to show 100%, then refresh
-        setTimeout(() => {
-          setUploads((prev) => prev.filter((u) => u.name !== file.name));
+        const timer = setTimeout(() => {
+          timersRef.current.delete(timer);
+          if (!mountedRef.current) return;
+          setUploads((prev) => prev.filter((u) => u.id !== entryId));
           onUploadComplete();
         }, 800);
+        timersRef.current.add(timer);
       } catch (err) {
+        if (!mountedRef.current) return;
         setUploads((prev) =>
           prev.map((u) =>
-            u.name === file.name
+            u.id === entryId
               ? {
                   ...u,
                   progress: 0,
-                  error:
-                    err instanceof Error ? err.message : "Upload failed",
+                  error: err instanceof Error ? err.message : "Upload failed",
                 }
               : u
           )
@@ -121,6 +142,14 @@ export function UploadZone({ projectId, onUploadComplete }: UploadZoneProps) {
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    // Only set false if leaving the drop zone entirely (not entering a child)
+    if (
+      dropRef.current &&
+      e.relatedTarget instanceof Node &&
+      dropRef.current.contains(e.relatedTarget)
+    ) {
+      return;
+    }
     setIsDragOver(false);
   }, []);
 
@@ -130,6 +159,7 @@ export function UploadZone({ projectId, onUploadComplete }: UploadZoneProps) {
   return (
     <div className="space-y-3">
       <div
+        ref={dropRef}
         role="button"
         tabIndex={0}
         aria-label="Upload files by dropping them here or clicking to browse"
@@ -177,15 +207,22 @@ export function UploadZone({ projectId, onUploadComplete }: UploadZoneProps) {
       </div>
 
       {activeUploads.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-2" role="status" aria-label="Upload progress">
           {activeUploads.map((u) => (
             <div
-              key={u.name}
+              key={u.id}
               className="flex items-center gap-3 rounded-md border px-3 py-2 text-sm"
             >
               <FileUp className="h-4 w-4 shrink-0 text-primary animate-pulse" />
               <span className="flex-1 truncate">{u.name}</span>
-              <div className="h-1.5 w-24 overflow-hidden rounded-full bg-secondary">
+              <div
+                className="h-1.5 w-24 overflow-hidden rounded-full bg-secondary"
+                role="progressbar"
+                aria-valuenow={u.progress}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`Uploading ${u.name}`}
+              >
                 <div
                   className="h-full bg-primary transition-all duration-300"
                   style={{ width: `${u.progress}%` }}
@@ -200,7 +237,7 @@ export function UploadZone({ projectId, onUploadComplete }: UploadZoneProps) {
         <div className="space-y-2">
           {failedUploads.map((u) => (
             <div
-              key={u.name}
+              key={u.id}
               className="flex items-center gap-3 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm"
             >
               <AlertCircle className="h-4 w-4 shrink-0 text-destructive" />
@@ -208,11 +245,10 @@ export function UploadZone({ projectId, onUploadComplete }: UploadZoneProps) {
               <span className="text-xs text-destructive">{u.error}</span>
               <button
                 className="text-xs text-muted-foreground hover:text-foreground"
+                aria-label={`Dismiss error for ${u.name}`}
                 onClick={(e) => {
                   e.stopPropagation();
-                  setUploads((prev) =>
-                    prev.filter((x) => x.name !== u.name)
-                  );
+                  setUploads((prev) => prev.filter((x) => x.id !== u.id));
                 }}
               >
                 Dismiss

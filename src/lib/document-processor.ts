@@ -1,5 +1,8 @@
 import fs from "fs/promises";
 import path from "path";
+import crypto from "crypto";
+
+export const MAX_EXTRACTED_LENGTH = 500_000; // ~500KB text limit
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || "./uploads";
 
@@ -98,8 +101,13 @@ async function extractPlainText(filePath: string): Promise<string> {
 
 /**
  * Ensure the upload directory exists and return the project-specific path.
+ * Validates projectId to prevent path traversal.
  */
 export async function getProjectUploadDir(projectId: string): Promise<string> {
+  // Only allow alphanumeric, hyphens, and underscores (UUID/CUID format)
+  if (!/^[\w-]+$/.test(projectId)) {
+    throw new Error("Invalid project ID");
+  }
   const dir = path.join(UPLOAD_DIR, projectId);
   await fs.mkdir(dir, { recursive: true });
   return dir;
@@ -114,9 +122,10 @@ export function safeFileName(originalName: string): string {
     .replace(/[/\\:*?"<>|\x00]/g, "_")
     .replace(/\.\./g, "_");
   const timestamp = Date.now();
+  const rand = crypto.randomBytes(4).toString("hex");
   const ext = path.extname(cleaned);
   const base = path.basename(cleaned, ext);
-  return `${timestamp}-${base}${ext}`;
+  return `${timestamp}-${rand}-${base}${ext}`;
 }
 
 /**

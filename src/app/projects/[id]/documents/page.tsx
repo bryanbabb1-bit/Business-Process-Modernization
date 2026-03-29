@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import {
   Card,
@@ -20,38 +20,46 @@ export default function DocumentsPage() {
 
   const [documents, setDocuments] = useState<Document[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const fetchDocuments = useCallback(async () => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
-      const res = await fetch(`/api/projects/${projectId}/documents`);
+      const res = await fetch(`/api/projects/${projectId}/documents`, {
+        signal: controller.signal,
+      });
       if (!res.ok) throw new Error("Failed to fetch documents");
       const data: Document[] = await res.json();
       setDocuments(data);
-
-      // Update selected doc if it's still in the list (content may have changed)
-      if (selectedDoc) {
-        const updated = data.find((d) => d.id === selectedDoc.id);
-        if (updated) setSelectedDoc(updated);
-        else setSelectedDoc(null);
-      }
+      setError(null);
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       setError(err instanceof Error ? err.message : "Failed to load documents");
     } finally {
       setIsLoading(false);
     }
-  }, [projectId, selectedDoc]);
+  }, [projectId]);
+
+  // Update selectedDoc from documents list (derive, don't store whole object)
+  const selectedDoc = documents.find((d) => d.id === selectedDocId) ?? null;
 
   useEffect(() => {
     fetchDocuments();
-  }, [projectId]); // Only run on mount / projectId change, not on every fetchDocuments ref change
+    return () => abortRef.current?.abort();
+  }, [fetchDocuments]);
 
   // Poll for processing updates every 5s if any docs are pending/processing
   useEffect(() => {
     const hasPending = documents.some(
-      (d) => d.processingStatus === "pending" || d.processingStatus === "processing"
+      (d) =>
+        d.processingStatus === "pending" ||
+        d.processingStatus === "processing"
     );
     if (!hasPending) return;
 
@@ -59,24 +67,39 @@ export default function DocumentsPage() {
     return () => clearInterval(interval);
   }, [documents, fetchDocuments]);
 
-  const handleDelete = async (docId: string) => {
-    setDeletingId(docId);
-    try {
-      const res = await fetch(
-        `/api/projects/${projectId}/documents?docId=${docId}`,
-        { method: "DELETE" }
-      );
-      if (!res.ok && res.status !== 204) {
-        throw new Error("Failed to delete document");
+  const handleDelete = useCallback(
+    async (docId: string) => {
+      if (!confirm("Delete this document? This action cannot be undone.")) return;
+      if (deletingIds.has(docId)) return;
+
+      setDeletingIds((prev) => new Set(prev).add(docId));
+      setError(null);
+      try {
+        const res = await fetch(
+          `/api/projects/${projectId}/documents?docId=${docId}`,
+          { method: "DELETE" }
+        );
+        if (!res.ok && res.status !== 204) {
+          throw new Error("Failed to delete document");
+        }
+        setDocuments((prev) => prev.filter((d) => d.id !== docId));
+        if (selectedDocId === docId) setSelectedDocId(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Delete failed");
+      } finally {
+        setDeletingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(docId);
+          return next;
+        });
       }
-      setDocuments((prev) => prev.filter((d) => d.id !== docId));
-      if (selectedDoc?.id === docId) setSelectedDoc(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Delete failed");
-    } finally {
-      setDeletingId(null);
-    }
-  };
+    },
+    [projectId, selectedDocId, deletingIds]
+  );
+
+  const handleSelect = useCallback((doc: Document) => {
+    setSelectedDocId(doc.id);
+  }, []);
 
   return (
     <div className="flex flex-col gap-6 p-6">
@@ -98,7 +121,15 @@ export default function DocumentsPage() {
       </Card>
 
       {error && (
-        <p className="text-sm text-destructive">{error}</p>
+        <div className="flex items-center justify-between rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
+          <p className="text-sm text-destructive">{error}</p>
+          <button
+            className="text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => setError(null)}
+          >
+            Dismiss
+          </button>
+        </div>
       )}
 
       {/* Document List + Preview */}
@@ -116,16 +147,20 @@ export default function DocumentsPage() {
           </CardHeader>
           <CardContent className="p-0">
             {isLoading ? (
-              <div className="flex items-center justify-center py-12">
+              <div
+                className="flex items-center justify-center py-12"
+                role="status"
+                aria-label="Loading documents"
+              >
                 <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
               </div>
             ) : (
               <DocumentList
                 documents={documents}
-                selectedId={selectedDoc?.id ?? null}
-                onSelect={setSelectedDoc}
+                selectedId={selectedDocId}
+                onSelect={handleSelect}
                 onDelete={handleDelete}
-                isDeleting={deletingId}
+                deletingIds={deletingIds}
               />
             )}
           </CardContent>

@@ -9,6 +9,7 @@ import {
   safeFileName,
   isAllowedExtension,
   MAX_FILE_SIZE,
+  MAX_EXTRACTED_LENGTH,
 } from "@/lib/document-processor";
 
 // GET /api/projects/[id]/documents - List documents for a project
@@ -98,16 +99,23 @@ export async function POST(
     await fs.writeFile(filePath, Buffer.from(bytes));
 
     // Create document record
-    const document = await prisma.document.create({
-      data: {
-        projectId: id,
-        fileName: file.name,
-        fileType: file.type || path.extname(file.name),
-        filePath,
-        fileSize: file.size,
-        processingStatus: "pending",
-      },
-    });
+    let document;
+    try {
+      document = await prisma.document.create({
+        data: {
+          projectId: id,
+          fileName: file.name,
+          fileType: file.type || path.extname(file.name),
+          filePath,
+          fileSize: file.size,
+          processingStatus: "pending",
+        },
+      });
+    } catch (dbError) {
+      // Clean up orphan file if DB insert fails
+      await fs.unlink(filePath).catch(() => {});
+      throw dbError;
+    }
 
     // Process in background (extract text)
     processDocument(document.id, filePath, file.type).catch((err) =>
@@ -206,7 +214,14 @@ async function processDocument(
   });
 
   try {
-    const extractedContent = await extractText(filePath, fileType);
+    let extractedContent = await extractText(filePath, fileType);
+
+    // Truncate to prevent oversized DB storage
+    if (extractedContent.length > MAX_EXTRACTED_LENGTH) {
+      extractedContent =
+        extractedContent.slice(0, MAX_EXTRACTED_LENGTH) +
+        "\n\n[Content truncated — exceeded maximum length]";
+    }
 
     await prisma.document.update({
       where: { id: documentId },

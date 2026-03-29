@@ -79,7 +79,7 @@ interface DocumentListProps {
   selectedId: string | null;
   onSelect: (doc: Document) => void;
   onDelete: (docId: string) => void;
-  isDeleting: string | null;
+  deletingIds: Set<string>;
 }
 
 export function DocumentList({
@@ -87,7 +87,7 @@ export function DocumentList({
   selectedId,
   onSelect,
   onDelete,
-  isDeleting,
+  deletingIds,
 }: DocumentListProps) {
   if (documents.length === 0) {
     return (
@@ -102,15 +102,17 @@ export function DocumentList({
   }
 
   return (
-    <div className="divide-y" role="list" aria-label="Uploaded documents">
+    <div className="divide-y" role="listbox" aria-label="Uploaded documents">
       {documents.map((doc) => {
         const Icon = getFileIcon(doc.fileName);
         const isSelected = doc.id === selectedId;
+        const isDeleting = deletingIds.has(doc.id);
 
         return (
           <div
             key={doc.id}
-            role="listitem"
+            role="option"
+            aria-selected={isSelected}
             className={cn(
               "flex items-center gap-3 px-3 py-3 cursor-pointer transition-colors hover:bg-muted/50",
               isSelected && "bg-muted"
@@ -138,13 +140,13 @@ export function DocumentList({
                 size="sm"
                 className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
                 aria-label={`Delete ${doc.fileName}`}
-                disabled={isDeleting === doc.id}
+                disabled={isDeleting}
                 onClick={(e) => {
                   e.stopPropagation();
                   onDelete(doc.id);
                 }}
               >
-                {isDeleting === doc.id ? (
+                {isDeleting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Trash2 className="h-4 w-4" />
