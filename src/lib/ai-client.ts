@@ -59,14 +59,12 @@ function extractJson(text: string): string {
     }
   }
 
-  // If we hit the end without closing, the response was likely truncated.
-  // Return what we have and let JSON.parse report the specific error.
   return text.slice(startIdx);
 }
 
 /**
  * Send a prompt to Claude and get a structured JSON response.
- * Uses the prefill technique to force pure JSON output.
+ * Uses tool_use for guaranteed valid JSON output.
  */
 export async function aiJsonRequest<T>(
   systemPrompt: string,
@@ -78,35 +76,50 @@ export async function aiJsonRequest<T>(
 
   log("INFO", "ai-client", `Sending request (max ${maxTokens} tokens)`);
 
-  // Use prefill: start the assistant response with "{" to force JSON mode
+  // Use tool_use to guarantee structured JSON output.
+  // We define a tool with a permissive schema and force the model to call it.
   const message = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
     max_tokens: maxTokens,
     system: systemPrompt,
-    messages: [
-      { role: "user", content: userPrompt },
-      { role: "assistant", content: "{" },
+    messages: [{ role: "user", content: userPrompt }],
+    tools: [
+      {
+        name: "deliver_json",
+        description:
+          "Deliver the complete JSON result. You MUST call this tool with your full response as the data parameter.",
+        input_schema: {
+          type: "object" as const,
+          additionalProperties: true,
+        },
+      },
     ],
+    tool_choice: { type: "tool" as const, name: "deliver_json" },
   });
 
-  const textBlock = message.content.find((b) => b.type === "text");
-  if (!textBlock || textBlock.type !== "text") {
-    throw new Error("No text response from AI");
+  // Extract the tool_use result
+  const toolBlock = message.content.find((b) => b.type === "tool_use");
+  if (toolBlock && toolBlock.type === "tool_use") {
+    log("INFO", "ai-client", "Got structured tool_use response");
+    return toolBlock.input as T;
   }
 
-  // Prepend the "{" we used as prefill
-  const rawResponse = "{" + textBlock.text;
+  // Fallback: if somehow no tool_use block, try text extraction
+  log("WARN", "ai-client", "No tool_use block found, falling back to text extraction");
+  const textBlock = message.content.find((b) => b.type === "text");
+  if (!textBlock || textBlock.type !== "text") {
+    throw new Error("No response from AI");
+  }
+
+  const rawResponse = textBlock.text.trim();
 
   try {
-    // First try: direct parse (works when the AI returns clean JSON)
     return JSON.parse(rawResponse) as T;
   } catch {
-    // Second try: extract JSON using bracket matching
     try {
       const extracted = extractJson(rawResponse);
       return JSON.parse(extracted) as T;
     } catch (err) {
-      // Log first 500 chars of the response for debugging
       log(
         "ERROR",
         "ai-client:parse",
