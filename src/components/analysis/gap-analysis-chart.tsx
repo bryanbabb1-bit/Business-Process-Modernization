@@ -40,9 +40,9 @@ export function GapAnalysisChart({ gaps }: GapAnalysisChartProps) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {sorted.map((gap, i) => (
+        {sorted.map((gap) => (
           <div
-            key={i}
+            key={gap.area}
             className="rounded-lg border p-3 space-y-2"
           >
             <div className="flex items-center justify-between">
@@ -71,7 +71,14 @@ export function GapAnalysisChart({ gaps }: GapAnalysisChartProps) {
             </div>
 
             {/* Visual gap bar */}
-            <div className="relative h-2 rounded-full bg-secondary overflow-hidden">
+            <div
+              className="relative h-2 rounded-full bg-secondary overflow-hidden"
+              role="meter"
+              aria-label={`${gap.area} gap closure`}
+              aria-valuenow={gap.gapSeverity === "critical" ? 25 : gap.gapSeverity === "high" ? 45 : gap.gapSeverity === "medium" ? 65 : 85}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            >
               <div
                 className="absolute inset-y-0 left-0 rounded-full"
                 style={{

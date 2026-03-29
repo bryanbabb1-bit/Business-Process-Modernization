@@ -57,9 +57,7 @@ export default function AnalysisPage() {
       const data: AnalysisData = await res.json();
       setAnalysis(data);
     } catch (err) {
-      if (err instanceof Error && err.message.includes("fetch")) {
-        setError("Failed to load analysis");
-      }
+      setError(err instanceof Error ? err.message : "Failed to load analysis");
     } finally {
       setIsLoading(false);
     }

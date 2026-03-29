@@ -167,13 +167,27 @@ export async function GET(
       );
     }
 
+    const safeParse = (json: string, fallback: unknown) => {
+      try {
+        return JSON.parse(json);
+      } catch {
+        return fallback;
+      }
+    };
+
     return NextResponse.json({
       id: analysis.id,
       projectId: analysis.projectId,
-      currentStateAssessment: JSON.parse(analysis.currentStateAssessment),
-      gapAnalysis: JSON.parse(analysis.gapAnalysis),
-      maturityScores: JSON.parse(analysis.maturityScores),
-      informationGaps: JSON.parse(analysis.informationGaps),
+      currentStateAssessment: safeParse(analysis.currentStateAssessment, {
+        summary: "",
+        strengths: [],
+        weaknesses: [],
+        opportunities: [],
+        threats: [],
+      }),
+      gapAnalysis: safeParse(analysis.gapAnalysis, []),
+      maturityScores: safeParse(analysis.maturityScores, []),
+      informationGaps: safeParse(analysis.informationGaps, []),
       createdAt: analysis.createdAt,
     });
   } catch (error) {
