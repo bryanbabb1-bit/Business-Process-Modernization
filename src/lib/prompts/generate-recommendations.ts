@@ -9,7 +9,8 @@ export function buildRecommendationsPrompt(
   gapAnalysis: string,
   maturityScores: string,
   workflows: string,
-  painPoints: string
+  painPoints: string,
+  techStack: string
 ): string {
   return `Generate modernization recommendations for the following company based on the analysis results.
 
@@ -31,6 +32,9 @@ ${workflows}
 **Pain Points:**
 ${painPoints}
 
+**Client's Current Tech Stack:**
+${techStack}
+
 Generate 8-12 recommendations as a JSON array. Each recommendation should be:
 
 [
@@ -43,7 +47,10 @@ Generate 8-12 recommendations as a JSON array. Each recommendation should be:
     "dependencies": ["titles of other recommendations this depends on"],
     "estimatedWeeks": 2-26,
     "keyBenefits": ["3-4 specific benefits"],
-    "riskFactors": ["1-2 risks to consider"]
+    "riskFactors": ["1-2 risks to consider"],
+    "techLeverage": ["Names of existing tools/platforms from the client's stack that this recommendation uses or extends"],
+    "newToolsRequired": ["Any new tools, platforms, or licenses the client would need to acquire"],
+    "estimatedCostRange": "$0 - $5K | $5K - $25K | $25K - $100K | $100K+"
   }
 ]
 
@@ -53,6 +60,12 @@ Category rules:
 - **transformational**: effortScore 7+, impactScore 7+, 12+ weeks
 
 Requirements:
+- **PRIORITIZE leveraging the client's existing tech stack** — favor solutions that build on tools the client already owns and knows before recommending new tools
+- When a recommendation CAN be achieved with existing tools, say so explicitly and keep effortScore lower
+- When new tools are truly needed, justify why existing tools are insufficient
+- techLeverage should list specific tools from the client's stack (not generic terms)
+- newToolsRequired should be empty when existing tools suffice
+- estimatedCostRange should reflect licensing, tooling, and implementation costs (not labor — that's separate)
 - Include at least 3 quick wins, 3-4 medium effort, and 2-3 transformational
 - Dependencies should reference other recommendation titles in this list
 - Quick wins should have no dependencies or depend only on other quick wins

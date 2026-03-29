@@ -21,6 +21,9 @@ interface RecommendationItem {
   estimatedWeeks: number;
   keyBenefits: string[];
   riskFactors: string[];
+  techLeverage: string[];
+  newToolsRequired: string[];
+  estimatedCostRange: string;
 }
 
 // POST /api/projects/[id]/recommendations - Generate recommendations from analysis
@@ -60,7 +63,8 @@ export async function POST(
       analysis.gapAnalysis,
       analysis.maturityScores,
       project.discovery?.currentWorkflows || "[]",
-      project.discovery?.painPoints || "[]"
+      project.discovery?.painPoints || "[]",
+      project.discovery?.techStack || "[]"
     );
 
     const items = await aiJsonRequest<RecommendationItem[]>(
@@ -89,6 +93,9 @@ export async function POST(
               estimatedWeeks: item.estimatedWeeks,
               keyBenefits: item.keyBenefits,
               riskFactors: item.riskFactors,
+              techLeverage: item.techLeverage || [],
+              newToolsRequired: item.newToolsRequired || [],
+              estimatedCostRange: item.estimatedCostRange || "",
             }),
           },
         })

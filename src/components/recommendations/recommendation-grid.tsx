@@ -19,6 +19,9 @@ interface Rec {
     estimatedWeeks?: number;
     keyBenefits?: string[];
     riskFactors?: string[];
+    techLeverage?: string[];
+    newToolsRequired?: string[];
+    estimatedCostRange?: string;
   };
 }
 

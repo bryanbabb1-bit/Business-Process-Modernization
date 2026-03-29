@@ -55,12 +55,28 @@ interface Risk {
   likelihood: string;
 }
 
+interface NewToolItem {
+  tool: string;
+  purpose: string;
+  estimatedAnnualCost: string;
+  alternatives: string;
+}
+
+interface CostBreakdown {
+  laborCost: string;
+  newToolingCost: string;
+  existingToolsLeveraged: string[];
+  newToolsRequired: NewToolItem[];
+  costSavingsFromReuse: string;
+}
+
 interface PlanData {
   id: string;
   phases: Phase[];
   totalDurationWeeks: number;
   totalEstimatedHours: number;
   resourceSummary: ResourceSummary;
+  costBreakdown?: CostBreakdown | null;
   risks: Risk[];
   confirmed: boolean;
   createdAt?: string;
@@ -244,6 +260,7 @@ export default function PlanPage() {
         totalDurationWeeks={plan.totalDurationWeeks}
         totalEstimatedHours={plan.totalEstimatedHours}
         resourceSummary={plan.resourceSummary}
+        costBreakdown={plan.costBreakdown}
         risks={plan.risks}
       />
 

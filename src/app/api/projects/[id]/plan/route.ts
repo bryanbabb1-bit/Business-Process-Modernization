@@ -33,6 +33,18 @@ interface PlanResult {
     estimatedTeamSize: number;
     estimatedBudgetRange: string;
   };
+  costBreakdown: {
+    laborCost: string;
+    newToolingCost: string;
+    existingToolsLeveraged: string[];
+    newToolsRequired: Array<{
+      tool: string;
+      purpose: string;
+      estimatedAnnualCost: string;
+      alternatives: string;
+    }>;
+    costSavingsFromReuse: string;
+  };
   risks: Array<{
     risk: string;
     mitigation: string;
@@ -52,6 +64,7 @@ export async function POST(
       where: { id },
       include: {
         recommendations: { where: { selected: true } },
+        discovery: { select: { techStack: true } },
       },
     });
 
@@ -91,7 +104,8 @@ export async function POST(
     const prompt = buildPlanPrompt(
       project.clientName,
       project.industry,
-      JSON.stringify(selectedRecs, null, 2)
+      JSON.stringify(selectedRecs, null, 2),
+      project.discovery?.techStack || "[]"
     );
 
     const result = await aiJsonRequest<PlanResult>(
@@ -110,6 +124,7 @@ export async function POST(
         ),
         interdependencies: JSON.stringify({
           resourceSummary: result.resourceSummary,
+          costBreakdown: result.costBreakdown,
           risks: result.risks,
           totalDurationWeeks: result.totalDurationWeeks,
           totalEstimatedHours: result.totalEstimatedHours,
@@ -176,6 +191,7 @@ export async function GET(
       totalDurationWeeks: meta.totalDurationWeeks || 0,
       totalEstimatedHours: meta.totalEstimatedHours || 0,
       resourceSummary: meta.resourceSummary || { roles: [], estimatedTeamSize: 0, estimatedBudgetRange: "N/A" },
+      costBreakdown: meta.costBreakdown || null,
       risks: meta.risks || [],
       confirmed: plan.confirmed,
       createdAt: plan.createdAt,

@@ -19,6 +19,9 @@ import {
   CheckSquare,
   Square,
   MessageSquare,
+  PackageCheck,
+  PackagePlus,
+  DollarSign,
 } from "lucide-react";
 
 interface RecommendationCardProps {
@@ -35,6 +38,9 @@ interface RecommendationCardProps {
     estimatedWeeks?: number;
     keyBenefits?: string[];
     riskFactors?: string[];
+    techLeverage?: string[];
+    newToolsRequired?: string[];
+    estimatedCostRange?: string;
   };
   onToggleSelect: (id: string, selected: boolean) => void;
   onSaveComment: (id: string, comment: string) => void;
@@ -170,6 +176,47 @@ export function RecommendationCard({
                 <li key={b} className="list-disc">{b}</li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {/* Tech stack leverage */}
+        {customizations?.techLeverage && customizations.techLeverage.length > 0 && (
+          <div className="space-y-1">
+            <div className="flex items-center gap-1 text-xs font-medium text-green-700">
+              <PackageCheck className="h-3 w-3" />
+              Uses Existing Tools
+            </div>
+            <div className="flex flex-wrap gap-1 pl-4">
+              {customizations.techLeverage.map((t) => (
+                <Badge key={t} variant="outline" className="text-[10px] h-5 border-green-300 text-green-700 bg-green-50">
+                  {t}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {customizations?.newToolsRequired && customizations.newToolsRequired.length > 0 && (
+          <div className="space-y-1">
+            <div className="flex items-center gap-1 text-xs font-medium text-amber-700">
+              <PackagePlus className="h-3 w-3" />
+              New Tools Needed
+            </div>
+            <div className="flex flex-wrap gap-1 pl-4">
+              {customizations.newToolsRequired.map((t) => (
+                <Badge key={t} variant="outline" className="text-[10px] h-5 border-amber-300 text-amber-700 bg-amber-50">
+                  {t}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Cost estimate */}
+        {customizations?.estimatedCostRange && (
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <DollarSign className="h-3 w-3" />
+            <span>Tooling cost: {customizations.estimatedCostRange}</span>
           </div>
         )}
 
