@@ -1,0 +1,109 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  clientName  String
+  industry    String
+  companySize String
+  status      String   @default("discovery") // discovery | analysis | planning | building | complete
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  discovery       DiscoveryData?
+  documents       Document[]
+  analyses        Analysis[]
+  recommendations Recommendation[]
+  plans           ImplementationPlan[]
+  packages        DeliverablePackage[]
+}
+
+model DiscoveryData {
+  id               String @id @default(cuid())
+  projectId        String @unique
+  businessProfile  String @default("{}") // JSON: industry details, revenue, headcount, goals
+  painPoints       String @default("[]") // JSON: array of categorized pain points
+  currentWorkflows String @default("[]") // JSON: workflow descriptions and mappings
+  techStack        String @default("[]") // JSON: current tools, platforms, integrations
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Document {
+  id               String   @id @default(cuid())
+  projectId        String
+  fileName         String
+  fileType         String
+  filePath         String
+  fileSize         Int
+  extractedContent String   @default("") // AI-extracted text/data from document
+  processingStatus String   @default("pending") // pending | processing | complete | error
+  createdAt        DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Analysis {
+  id                     String   @id @default(cuid())
+  projectId              String
+  currentStateAssessment String   @default("{}") // JSON
+  gapAnalysis            String   @default("{}") // JSON: gaps between current and ideal state
+  maturityScores         String   @default("{}") // JSON: scores across dimensions
+  informationGaps        String   @default("[]") // JSON: what we still need to know
+  createdAt              DateTime @default(now())
+
+  project         Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  recommendations Recommendation[]
+}
+
+model Recommendation {
+  id             String  @id @default(cuid())
+  projectId      String
+  analysisId     String
+  title          String
+  description    String
+  category       String // quick_win | medium_effort | transformational
+  effortScore    Int // 1-10
+  impactScore    Int // 1-10
+  dependencies   String  @default("[]") // JSON: IDs of other recommendations this depends on
+  selected       Boolean @default(false)
+  customizations String  @default("{}") // JSON: user feedback/tweaks
+
+  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  analysis Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+}
+
+model ImplementationPlan {
+  id                       String   @id @default(cuid())
+  projectId                String
+  phases                   String   @default("[]") // JSON: ordered phases with tasks, timelines, resources
+  selectedRecommendationIds String  @default("[]") // JSON
+  interdependencies        String   @default("{}") // JSON
+  confirmed                Boolean  @default(false)
+  createdAt                DateTime @default(now())
+
+  project  Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  packages DeliverablePackage[]
+}
+
+model DeliverablePackage {
+  id           String   @id @default(cuid())
+  planId       String
+  projectId    String
+  packageName  String
+  packagePath  String   @default("")
+  configSchema String   @default("{}") // JSON: what the client needs to configure
+  artifacts    String   @default("[]") // JSON: list of generated files and their purposes
+  status       String   @default("generating") // generating | ready | downloaded
+  createdAt    DateTime @default(now())
+
+  plan    ImplementationPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  project Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
