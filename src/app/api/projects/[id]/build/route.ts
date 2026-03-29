@@ -10,6 +10,67 @@ import { log, logError } from "@/lib/logger";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
+/**
+ * Normalize the AI response into the expected ArtifactResult shape.
+ * The AI may nest data under various keys or wrap the whole thing.
+ */
+function normalizeArtifactResult(raw: Record<string, unknown>): ArtifactResult {
+  // Try to find artifacts array — could be at top level or nested
+  let data = raw;
+
+  // If the result has a single wrapper key like "data", "result", "output", unwrap it
+  const keys = Object.keys(raw);
+  if (keys.length === 1 && typeof raw[keys[0]] === "object" && raw[keys[0]] !== null) {
+    const inner = raw[keys[0]] as Record<string, unknown>;
+    if (Array.isArray(inner.artifacts) || Array.isArray(inner.configValues)) {
+      data = inner;
+    }
+  }
+
+  // Find artifacts array — check common locations
+  let artifacts = data.artifacts;
+  if (!Array.isArray(artifacts)) {
+    // Search one level deep for an artifacts array
+    for (const val of Object.values(data)) {
+      if (val && typeof val === "object" && !Array.isArray(val)) {
+        const nested = val as Record<string, unknown>;
+        if (Array.isArray(nested.artifacts)) {
+          artifacts = nested.artifacts;
+          // Also pull other fields from this nested object
+          data = { ...data, ...nested };
+          break;
+        }
+      }
+    }
+  }
+
+  if (!Array.isArray(artifacts)) {
+    log("ERROR", "build", `AI response keys: ${JSON.stringify(Object.keys(raw))}`);
+    throw new Error("AI response missing artifacts array");
+  }
+
+  return {
+    packageName: String(data.packageName || data.package_name || "modernization-package"),
+    summary: String(data.summary || data.description || ""),
+    artifacts: (artifacts as Array<Record<string, unknown>>).map((a) => ({
+      fileName: String(a.fileName || a.file_name || a.name || "untitled.txt"),
+      category: String(a.category || a.type || "guide"),
+      description: String(a.description || ""),
+      content: String(a.content || a.body || ""),
+    })),
+    configValues: Array.isArray(data.configValues || data.config_values)
+      ? ((data.configValues || data.config_values) as Array<Record<string, unknown>>).map((cv) => ({
+          key: String(cv.key || cv.name || ""),
+          label: String(cv.label || cv.key || ""),
+          description: String(cv.description || ""),
+          type: String(cv.type || "string"),
+          defaultValue: String(cv.defaultValue || cv.default_value || cv.default || ""),
+          required: Boolean(cv.required),
+        }))
+      : [],
+  };
+}
+
 function safeParse(json: string, fallback: unknown) {
   try {
     return JSON.parse(json);
@@ -92,10 +153,19 @@ export async function POST(
       selectedOption
     );
 
-    const result = await aiJsonRequest<ArtifactResult>(
+    const rawResult = await aiJsonRequest<Record<string, unknown>>(
       GENERATE_ARTIFACTS_SYSTEM,
       prompt,
       { maxTokens: 16384 }
+    );
+
+    // Normalize the AI response — it may nest data under various keys
+    const result = normalizeArtifactResult(rawResult);
+
+    log(
+      "INFO",
+      "build",
+      `AI returned ${result.artifacts.length} artifacts, ${result.configValues.length} config values`
     );
 
     // Generate ZIP file
