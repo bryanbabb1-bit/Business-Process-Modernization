@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
-import { Save, Plus, X, AlertCircle } from "lucide-react";
+import { Save, Plus, X, AlertCircle, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -636,6 +636,8 @@ export default function DiscoveryPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
+  const [researching, setResearching] = useState(false);
+  const [researchError, setResearchError] = useState<string | null>(null);
 
   // Form states
   const [profile, setProfile] = useState<BusinessProfile>(DEFAULT_PROFILE);
@@ -736,6 +738,62 @@ export default function DiscoveryPage() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [isDirty]);
 
+  // AI Research handler
+  async function handleResearch() {
+    const hasData =
+      profile.description ||
+      painPoints.length > 0 ||
+      workflows.length > 0 ||
+      techStack.length > 0;
+
+    if (
+      hasData &&
+      !confirm(
+        "This will replace all current discovery data with AI-researched content. Continue?"
+      )
+    ) {
+      return;
+    }
+
+    setResearching(true);
+    setResearchError(null);
+
+    try {
+      const res = await fetch(`/api/projects/${projectId}/research`, {
+        method: "POST",
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Research failed");
+      }
+
+      const result = await res.json();
+
+      // Populate all fields with researched data
+      initialLoadDone.current = false;
+      setProfile({
+        ...DEFAULT_PROFILE,
+        ...result.businessProfile,
+      });
+      setPainPoints(result.painPoints || []);
+      setWorkflows(result.currentWorkflows || []);
+      setTechStack(result.techStack || []);
+
+      // Mark as dirty so user knows to review and save
+      requestAnimationFrame(() => {
+        initialLoadDone.current = true;
+        setIsDirty(true);
+      });
+    } catch (err) {
+      setResearchError(
+        err instanceof Error ? err.message : "Research failed. Please try again."
+      );
+    } finally {
+      setResearching(false);
+    }
+  }
+
   // Save handler with error feedback
   async function handleSave() {
     setSaving(true);
@@ -788,14 +846,46 @@ export default function DiscoveryPage() {
           {saveSuccess && (
             <span className="text-sm text-green-600">Saved!</span>
           )}
-          <Button onClick={handleSave} disabled={saving}>
+          <Button
+            variant="outline"
+            onClick={handleResearch}
+            disabled={researching || saving}
+          >
+            {researching ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="mr-2 h-4 w-4" />
+            )}
+            {researching ? "Researching..." : "AI Research & Pre-fill"}
+          </Button>
+          <Button onClick={handleSave} disabled={saving || researching}>
             <Save className="mr-2 h-4 w-4" />
             {saving ? "Saving..." : "Save Progress"}
           </Button>
         </div>
       </div>
 
-      {/* Error banners */}
+      {/* Status banners */}
+      {researching && (
+        <div className="mb-4 flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+          <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+          AI is researching {`"${profile.description ? "your company" : "this company"}`}... This may take 15-30 seconds.
+        </div>
+      )}
+      {researchError && (
+        <div className="mb-4 flex items-center justify-between rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            {researchError}
+          </div>
+          <button
+            className="text-xs hover:underline"
+            onClick={() => setResearchError(null)}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       {loadError && (
         <div className="mb-4 flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
           <AlertCircle className="h-4 w-4 shrink-0" />
