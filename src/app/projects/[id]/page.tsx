@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -26,7 +26,6 @@ import { Badge } from "@/components/ui/badge";
 import { Header } from "@/components/layout/header";
 import { useProjectStore } from "@/store/project-store";
 import { formatDate, getStatusColor } from "@/lib/utils";
-import type { Project } from "@/types";
 
 const phaseCards = [
   {
@@ -88,24 +87,37 @@ const phaseCards = [
 export default function ProjectOverviewPage() {
   const params = useParams();
   const router = useRouter();
-  const { deleteProject } = useProjectStore();
-  const [project, setProject] = useState<Project | null>(null);
-  const [loading, setLoading] = useState(true);
-
+  const {
+    currentProject: project,
+    setCurrentProject,
+    deleteProject,
+    isDeletingProject,
+  } = useProjectStore();
   const projectId = params.id as string;
 
   useEffect(() => {
     async function load() {
       const res = await fetch(`/api/projects/${projectId}`);
       if (res.ok) {
-        setProject(await res.json());
+        setCurrentProject(await res.json());
       }
-      setLoading(false);
     }
-    load();
-  }, [projectId]);
+    if (!project || project.id !== projectId) {
+      load();
+    }
+  }, [projectId, project, setCurrentProject]);
 
-  if (loading) {
+  async function handleDelete() {
+    if (confirm("Are you sure you want to delete this project?")) {
+      const success = await deleteProject(projectId);
+      if (success) {
+        setCurrentProject(null);
+        router.push("/");
+      }
+    }
+  }
+
+  if (!project || project.id !== projectId) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -113,88 +125,74 @@ export default function ProjectOverviewPage() {
     );
   }
 
-  if (!project) {
-    return (
-      <div className="p-6 text-center">
-        <p>Project not found.</p>
-        <Link href="/">
-          <Button variant="outline" className="mt-4">
-            Back to Dashboard
-          </Button>
-        </Link>
-      </div>
-    );
-  }
-
-  async function handleDelete() {
-    if (confirm("Are you sure you want to delete this project?")) {
-      await deleteProject(projectId);
-      router.push("/");
-    }
-  }
-
   return (
-    <div className="flex flex-col">
-      <Header
-        title={project.name}
-        description={`${project.clientName} - ${project.industry}`}
-      />
-
-      <div className="p-6">
-        <div className="mb-6 flex items-center justify-between">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+    <div className="p-6">
+      <div className="mb-6 flex items-center justify-between">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Dashboard
+        </Link>
+        <div className="flex items-center gap-3">
+          <Badge className={getStatusColor(project.status)} variant="outline">
+            {project.status}
+          </Badge>
+          <span className="text-sm text-muted-foreground">
+            Created {formatDate(project.createdAt)}
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleDelete}
+            disabled={isDeletingProject}
+            aria-label="Delete project"
           >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Dashboard
-          </Link>
-          <div className="flex items-center gap-3">
-            <Badge className={getStatusColor(project.status)} variant="outline">
-              {project.status}
-            </Badge>
-            <span className="text-sm text-muted-foreground">
-              Created {formatDate(project.createdAt)}
-            </span>
-            <Button variant="ghost" size="icon" onClick={handleDelete}>
-              <Trash2 className="h-4 w-4 text-destructive" />
-            </Button>
-          </div>
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
         </div>
+      </div>
 
-        {/* Phase Cards Grid */}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {phaseCards.map((phase) => (
-            <Link
-              key={phase.key}
-              href={`/projects/${projectId}/${phase.path}`}
-            >
-              <Card className="h-full transition-shadow hover:shadow-md">
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`flex h-10 w-10 items-center justify-center rounded-lg ${phase.bg}`}
-                    >
-                      <phase.icon className={`h-5 w-5 ${phase.color}`} />
-                    </div>
-                    <div>
-                      <CardTitle className="text-base">
-                        {phase.label}
-                      </CardTitle>
-                    </div>
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold">{project.name}</h2>
+        <p className="text-sm text-muted-foreground">
+          {project.clientName} - {project.industry}
+        </p>
+      </div>
+
+      {/* Phase Cards Grid */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {phaseCards.map((phase) => (
+          <Link
+            key={phase.key}
+            href={`/projects/${projectId}/${phase.path}`}
+          >
+            <Card className="h-full transition-shadow hover:shadow-md">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`flex h-10 w-10 items-center justify-center rounded-lg ${phase.bg}`}
+                  >
+                    <phase.icon className={`h-5 w-5 ${phase.color}`} />
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription>{phase.description}</CardDescription>
-                  <div className="mt-4 flex items-center text-sm text-primary">
-                    Go to {phase.label}
-                    <ArrowRight className="ml-1 h-4 w-4" />
+                  <div>
+                    <CardTitle className="text-base">
+                      {phase.label}
+                    </CardTitle>
                   </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <CardDescription>{phase.description}</CardDescription>
+                <div className="mt-4 flex items-center text-sm text-primary">
+                  Go to {phase.label}
+                  <ArrowRight className="ml-1 h-4 w-4" />
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
       </div>
     </div>
   );

@@ -14,7 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { ProjectStatus } from "@/types";
 
-const phases = [
+export const PROJECT_PHASES = [
   { key: "discovery", label: "Discovery", icon: Search, path: "discovery" },
   { key: "documents", label: "Documents", icon: FileText, path: "documents" },
   { key: "analysis", label: "Analysis", icon: BarChart3, path: "analysis" },
@@ -22,14 +22,16 @@ const phases = [
   { key: "plan", label: "Plan", icon: GitBranch, path: "plan" },
   { key: "build", label: "Build", icon: Package, path: "build" },
   { key: "customize", label: "Customize", icon: MessageSquare, path: "customize" },
-];
+] as const;
 
-const statusOrder: Record<string, number> = {
-  discovery: 0,
-  analysis: 2,
-  planning: 4,
-  building: 5,
-  complete: 6,
+// Maps project status to the highest phase index that should be accessible.
+// Phases at or below this index (plus one ahead for "next step") are unlocked.
+const STATUS_TO_MAX_PHASE: Record<ProjectStatus, number> = {
+  discovery: 1,      // discovery + documents accessible
+  analysis: 3,       // through recommendations
+  planning: 4,       // through plan
+  building: 5,       // through build
+  complete: 6,       // everything accessible
 };
 
 interface ProjectNavProps {
@@ -39,20 +41,22 @@ interface ProjectNavProps {
 
 export function ProjectNav({ projectId, projectStatus }: ProjectNavProps) {
   const pathname = usePathname();
-  const currentPhaseIndex = statusOrder[projectStatus] ?? 0;
+  const maxAccessibleIndex = STATUS_TO_MAX_PHASE[projectStatus] ?? 1;
 
   return (
-    <nav className="border-b bg-card">
+    <nav className="border-b bg-card" aria-label="Project phases">
       <div className="flex items-center gap-1 overflow-x-auto px-4 py-2">
-        {phases.map((phase, index) => {
+        {PROJECT_PHASES.map((phase, index) => {
           const href = `/projects/${projectId}/${phase.path}`;
-          const isActive = pathname.includes(phase.path);
-          const isAccessible = index <= currentPhaseIndex + 1;
+          const isActive = pathname.endsWith(`/${phase.path}`) || pathname.endsWith(`/${phase.path}/`);
+          const isAccessible = index <= maxAccessibleIndex;
 
           return (
             <Link
               key={phase.key}
               href={isAccessible ? href : "#"}
+              aria-current={isActive ? "page" : undefined}
+              aria-disabled={!isAccessible}
               className={cn(
                 "flex items-center gap-2 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 isActive
@@ -67,11 +71,6 @@ export function ProjectNav({ projectId, projectStatus }: ProjectNavProps) {
             >
               <phase.icon className="h-4 w-4" />
               <span className="hidden sm:inline">{phase.label}</span>
-              {index < phases.length - 1 && (
-                <span className="ml-2 hidden text-muted-foreground/30 lg:inline">
-                  /
-                </span>
-              )}
             </Link>
           );
         })}

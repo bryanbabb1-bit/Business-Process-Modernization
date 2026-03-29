@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useParams } from "next/navigation";
 import { ProjectNav } from "@/components/layout/project-nav";
+import { useProjectStore } from "@/store/project-store";
 import type { ProjectStatus } from "@/types";
 
 export default function ProjectLayout({
@@ -12,18 +13,27 @@ export default function ProjectLayout({
 }) {
   const params = useParams();
   const projectId = params.id as string;
-  const [status, setStatus] = useState<ProjectStatus>("discovery");
+  const { currentProject, setCurrentProject } = useProjectStore();
 
   useEffect(() => {
-    async function fetchStatus() {
+    async function fetchProject() {
       const res = await fetch(`/api/projects/${projectId}`);
       if (res.ok) {
         const data = await res.json();
-        setStatus(data.status);
+        setCurrentProject(data);
       }
     }
-    fetchStatus();
-  }, [projectId]);
+
+    // Only fetch if we don't have this project or it's a different one
+    if (!currentProject || currentProject.id !== projectId) {
+      fetchProject();
+    }
+  }, [projectId, currentProject, setCurrentProject]);
+
+  const status: ProjectStatus =
+    (currentProject?.id === projectId
+      ? (currentProject.status as ProjectStatus)
+      : null) ?? "discovery";
 
   return (
     <div className="flex flex-col">

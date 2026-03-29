@@ -27,13 +27,13 @@ export function Sidebar() {
           <Zap className="h-5 w-5 text-primary-foreground" />
         </div>
         <div>
-          <h1 className="text-sm font-bold leading-tight">BPM Tool</h1>
+          <span className="text-sm font-bold leading-tight">BPM Tool</span>
           <p className="text-[10px] text-muted-foreground">Process Modernization</p>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 px-3 py-4">
+      <nav className="flex-1 space-y-1 px-3 py-4" aria-label="Main navigation">
         {navigation.map((item) => {
           const isActive =
             item.href === "/"

@@ -6,11 +6,13 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatDate(date: string | Date): string {
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return "Unknown date";
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
-  }).format(new Date(date));
+  }).format(d);
 }
 
 export function formatFileSize(bytes: number): string {

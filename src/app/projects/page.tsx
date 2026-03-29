@@ -18,7 +18,7 @@ import { useProjectStore } from "@/store/project-store";
 import { formatDate, getStatusColor } from "@/lib/utils";
 
 export default function ProjectsListPage() {
-  const { projects, isLoading, fetchProjects } = useProjectStore();
+  const { projects, isFetchingProjects: isLoading, fetchProjects } = useProjectStore();
 
   useEffect(() => {
     fetchProjects();

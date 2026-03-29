@@ -27,7 +27,7 @@ import { INDUSTRIES, COMPANY_SIZES } from "@/types";
 
 export default function NewProjectPage() {
   const router = useRouter();
-  const { createProject, isLoading } = useProjectStore();
+  const { createProject, isCreatingProject, error } = useProjectStore();
   const [form, setForm] = useState({
     name: "",
     clientName: "",
@@ -35,8 +35,12 @@ export default function NewProjectPage() {
     companySize: "",
   });
 
-  const isValid =
-    form.name && form.clientName && form.industry && form.companySize;
+  const isValid = Boolean(
+    form.name.trim() &&
+      form.clientName.trim() &&
+      form.industry &&
+      form.companySize
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -103,7 +107,7 @@ export default function NewProjectPage() {
                     setForm({ ...form, industry: value })
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="industry">
                     <SelectValue placeholder="Select industry" />
                   </SelectTrigger>
                   <SelectContent>
@@ -117,14 +121,14 @@ export default function NewProjectPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="companySize">Company Size</Label>
+                <Label htmlFor="companySize-trigger">Company Size</Label>
                 <Select
                   value={form.companySize}
                   onValueChange={(value) =>
                     setForm({ ...form, companySize: value })
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="companySize-trigger">
                     <SelectValue placeholder="Select company size" />
                   </SelectTrigger>
                   <SelectContent>
@@ -137,14 +141,17 @@ export default function NewProjectPage() {
                 </Select>
               </div>
 
+              {error && (
+                <p className="text-sm text-destructive">{error}</p>
+              )}
               <div className="flex justify-end gap-3 pt-4">
                 <Link href="/">
                   <Button type="button" variant="outline">
                     Cancel
                   </Button>
                 </Link>
-                <Button type="submit" disabled={!isValid || isLoading}>
-                  {isLoading ? "Creating..." : "Create Project"}
+                <Button type="submit" disabled={!isValid || isCreatingProject}>
+                  {isCreatingProject ? "Creating..." : "Create Project"}
                 </Button>
               </div>
             </form>

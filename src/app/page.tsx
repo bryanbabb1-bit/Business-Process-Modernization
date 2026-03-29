@@ -10,6 +10,7 @@ import {
   BarChart3,
   Zap,
   Package,
+  CheckCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,11 +31,11 @@ const statusIcons: Record<string, React.ElementType> = {
   analysis: BarChart3,
   planning: Zap,
   building: Package,
-  complete: Zap,
+  complete: CheckCircle,
 };
 
 export default function DashboardPage() {
-  const { projects, isLoading, fetchProjects } = useProjectStore();
+  const { projects, isFetchingProjects: isLoading, fetchProjects } = useProjectStore();
 
   useEffect(() => {
     fetchProjects();
@@ -53,28 +54,30 @@ export default function DashboardPage() {
 
       <div className="p-6">
         {/* Stats Row */}
-        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Active Projects</CardDescription>
-              <CardTitle className="text-3xl">{activeProjects.length}</CardTitle>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Completed</CardDescription>
-              <CardTitle className="text-3xl">
-                {completedProjects.length}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Total Projects</CardDescription>
-              <CardTitle className="text-3xl">{projects.length}</CardTitle>
-            </CardHeader>
-          </Card>
-        </div>
+        {!isLoading && projects.length > 0 && (
+          <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription>Active Projects</CardDescription>
+                <CardTitle className="text-3xl">{activeProjects.length}</CardTitle>
+              </CardHeader>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription>Completed</CardDescription>
+                <CardTitle className="text-3xl">
+                  {completedProjects.length}
+                </CardTitle>
+              </CardHeader>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription>Total Projects</CardDescription>
+                <CardTitle className="text-3xl">{projects.length}</CardTitle>
+              </CardHeader>
+            </Card>
+          </div>
+        )}
 
         {/* Projects Grid */}
         {isLoading ? (
