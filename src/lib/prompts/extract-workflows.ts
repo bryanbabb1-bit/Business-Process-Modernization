@@ -12,7 +12,7 @@ export function buildExtractWorkflowsPrompt(
 **Document:** ${documentName}
 
 **Document Content:**
-${documentContent.slice(0, 50000)}
+${documentContent.slice(0, 30000)}
 
 **Existing Workflows Already Captured:**
 ${existingWorkflows || "None yet"}

@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 
 function sendLog(
+  level: "ERROR" | "INFO",
   source: string,
   message: string,
   details?: Record<string, unknown>
@@ -10,16 +11,14 @@ function sendLog(
   fetch("/api/log", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ level: "ERROR", source, message, details }),
-  }).catch(() => {
-    // Silently fail - don't create error loops
-  });
+    body: JSON.stringify({ level, source, message, details }),
+  }).catch(() => {});
 }
 
 export function ErrorReporter() {
   useEffect(() => {
     function handleError(event: ErrorEvent) {
-      sendLog("window.onerror", event.message, {
+      sendLog("ERROR", "window.onerror", event.message, {
         filename: event.filename,
         lineno: event.lineno,
         colno: event.colno,
@@ -32,7 +31,7 @@ export function ErrorReporter() {
         event.reason instanceof Error
           ? event.reason.message
           : String(event.reason);
-      sendLog("unhandledrejection", message, {
+      sendLog("ERROR", "unhandledrejection", message, {
         stack: event.reason instanceof Error ? event.reason.stack : undefined,
       });
     }
@@ -40,10 +39,8 @@ export function ErrorReporter() {
     window.addEventListener("error", handleError);
     window.addEventListener("unhandledrejection", handleUnhandledRejection);
 
-    // Log page load for confirmation logging is working
-    sendLog("init", "Error reporter initialized", {
+    sendLog("INFO", "init", "Error reporter initialized", {
       url: window.location.href,
-      userAgent: navigator.userAgent,
     });
 
     return () => {

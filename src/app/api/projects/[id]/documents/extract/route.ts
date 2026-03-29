@@ -114,7 +114,7 @@ export async function POST(
     const result = await aiJsonRequest<ExtractResult>(
       EXTRACT_WORKFLOWS_SYSTEM,
       prompt,
-      { maxTokens: 4096 }
+      { maxTokens: 8192 }
     );
 
     log(
