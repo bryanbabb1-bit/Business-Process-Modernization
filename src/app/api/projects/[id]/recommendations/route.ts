@@ -18,12 +18,20 @@ interface RecommendationItem {
   effortScore: number;
   impactScore: number;
   dependencies: string[];
-  estimatedWeeks: number;
   keyBenefits: string[];
   riskFactors: string[];
-  techLeverage: string[];
-  newToolsRequired: string[];
-  estimatedCostRange: string;
+  currentStackOption: {
+    approach: string;
+    toolsUsed: string[];
+    limitations: string;
+    licensingCost: string;
+  };
+  improvedStackOption: {
+    approach: string;
+    newTools: string[];
+    advantages: string;
+    licensingCost: string;
+  };
 }
 
 // POST /api/projects/[id]/recommendations - Generate recommendations from analysis
@@ -90,12 +98,10 @@ export async function POST(
             dependencies: JSON.stringify(item.dependencies || []),
             selected: false,
             customizations: JSON.stringify({
-              estimatedWeeks: item.estimatedWeeks,
               keyBenefits: item.keyBenefits,
               riskFactors: item.riskFactors,
-              techLeverage: item.techLeverage || [],
-              newToolsRequired: item.newToolsRequired || [],
-              estimatedCostRange: item.estimatedCostRange || "",
+              currentStackOption: item.currentStackOption || null,
+              improvedStackOption: item.improvedStackOption || null,
             }),
           },
         })

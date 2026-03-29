@@ -7,13 +7,11 @@ interface Phase {
   id: string;
   name: string;
   order: number;
-  durationWeeks: number;
-  tasks: Array<{ id: string; title: string; estimatedHours: number }>;
+  tasks: Array<{ id: string; title: string }>;
 }
 
 interface TimelineViewProps {
   phases: Phase[];
-  totalDurationWeeks: number;
 }
 
 const phaseColors = [
@@ -25,55 +23,21 @@ const phaseColors = [
   "bg-cyan-500",
 ];
 
-export function TimelineView({ phases, totalDurationWeeks }: TimelineViewProps) {
+export function TimelineView({ phases }: TimelineViewProps) {
   const sorted = [...phases].sort((a, b) => a.order - b.order);
-
-  // Calculate cumulative start weeks
-  let cumulativeWeek = 0;
-  const phaseTimeline = sorted.map((phase, i) => {
-    const start = cumulativeWeek;
-    cumulativeWeek += phase.durationWeeks;
-    return {
-      ...phase,
-      startWeek: start,
-      endWeek: start + phase.durationWeeks,
-      color: phaseColors[i % phaseColors.length],
-    };
-  });
-
-  // Generate week markers
-  const weekMarkers: number[] = [];
-  for (let w = 0; w <= totalDurationWeeks; w += Math.max(1, Math.floor(totalDurationWeeks / 8))) {
-    weekMarkers.push(w);
-  }
-  if (weekMarkers[weekMarkers.length - 1] !== totalDurationWeeks) {
-    weekMarkers.push(totalDurationWeeks);
-  }
+  const totalPhases = sorted.length;
 
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Project Timeline</CardTitle>
+        <CardTitle className="text-base">Delivery Sequence</CardTitle>
       </CardHeader>
       <CardContent>
-        {/* Week markers */}
-        <div className="relative mb-2 h-6">
-          {weekMarkers.map((w) => (
-            <div
-              key={w}
-              className="absolute text-[10px] text-muted-foreground -translate-x-1/2"
-              style={{ left: `${(w / totalDurationWeeks) * 100}%` }}
-            >
-              W{w}
-            </div>
-          ))}
-        </div>
-
-        {/* Timeline bars */}
+        {/* Phase bars — equal width since we're not estimating duration */}
         <div className="space-y-3">
-          {phaseTimeline.map((phase) => {
-            const leftPct = (phase.startWeek / totalDurationWeeks) * 100;
-            const widthPct = (phase.durationWeeks / totalDurationWeeks) * 100;
+          {sorted.map((phase, i) => {
+            const widthPct = 100 / totalPhases;
+            const leftPct = i * widthPct;
 
             return (
               <div key={phase.id} className="space-y-1">
@@ -82,21 +46,21 @@ export function TimelineView({ phases, totalDurationWeeks }: TimelineViewProps) 
                     Phase {phase.order}: {phase.name}
                   </span>
                   <span className="text-muted-foreground">
-                    {phase.durationWeeks} weeks · {phase.tasks.length} tasks
+                    {phase.tasks.length} {phase.tasks.length === 1 ? "deliverable" : "deliverables"}
                   </span>
                 </div>
                 <div className="relative h-7 rounded-md bg-muted overflow-hidden">
                   <div
                     className={cn(
                       "absolute top-0 h-full rounded-md flex items-center px-2 text-[10px] font-medium text-white transition-all",
-                      phase.color
+                      phaseColors[i % phaseColors.length]
                     )}
                     style={{
-                      left: `${leftPct}%`,
-                      width: `${Math.max(widthPct, 3)}%`,
+                      left: "0%",
+                      width: `${Math.max(((i + 1) / totalPhases) * 100, 10)}%`,
                     }}
                   >
-                    {widthPct > 15 && (
+                    {((i + 1) / totalPhases) * 100 > 20 && (
                       <span className="truncate">{phase.name}</span>
                     )}
                   </div>
@@ -106,12 +70,11 @@ export function TimelineView({ phases, totalDurationWeeks }: TimelineViewProps) 
           })}
         </div>
 
-        {/* Summary row */}
+        {/* Summary */}
         <div className="mt-4 pt-3 border-t flex items-center justify-between text-xs text-muted-foreground">
-          <span>Total: {totalDurationWeeks} weeks</span>
+          <span>{sorted.length} phases</span>
           <span>
-            {sorted.reduce((sum, p) => sum + p.tasks.length, 0)} tasks across{" "}
-            {sorted.length} phases
+            {sorted.reduce((sum, p) => sum + p.tasks.length, 0)} total deliverables
           </span>
         </div>
       </CardContent>

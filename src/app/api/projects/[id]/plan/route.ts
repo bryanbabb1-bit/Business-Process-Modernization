@@ -13,37 +13,34 @@ interface PlanResult {
     name: string;
     description: string;
     order: number;
-    durationWeeks: number;
     tasks: Array<{
       id: string;
       title: string;
       description: string;
       recommendationTitle: string;
-      estimatedHours: number;
-      resources: string[];
+      deliverables: string[];
       status: string;
     }>;
     dependencies: string[];
     milestones: string[];
   }>;
-  totalDurationWeeks: number;
-  totalEstimatedHours: number;
-  resourceSummary: {
-    roles: string[];
-    estimatedTeamSize: number;
-    estimatedBudgetRange: string;
-  };
-  costBreakdown: {
-    laborCost: string;
-    newToolingCost: string;
-    existingToolsLeveraged: string[];
-    newToolsRequired: Array<{
-      tool: string;
-      purpose: string;
-      estimatedAnnualCost: string;
-      alternatives: string;
-    }>;
-    costSavingsFromReuse: string;
+  implementationOptions: {
+    currentStack: {
+      description: string;
+      totalLicensingCost: string;
+      toolsLeveraged: string[];
+      limitations: string[];
+    };
+    improvedStack: {
+      description: string;
+      newTools: Array<{
+        tool: string;
+        purpose: string;
+        cost: string;
+      }>;
+      totalLicensingCost: string;
+      advantages: string[];
+    };
   };
   risks: Array<{
     risk: string;
@@ -123,11 +120,8 @@ export async function POST(
           project.recommendations.map((r) => r.id)
         ),
         interdependencies: JSON.stringify({
-          resourceSummary: result.resourceSummary,
-          costBreakdown: result.costBreakdown,
+          implementationOptions: result.implementationOptions,
           risks: result.risks,
-          totalDurationWeeks: result.totalDurationWeeks,
-          totalEstimatedHours: result.totalEstimatedHours,
         }),
         confirmed: false,
       },
@@ -139,7 +133,7 @@ export async function POST(
       data: { status: "planning" },
     });
 
-    log("INFO", "plan", `Plan generated: ${result.phases.length} phases, ${result.totalDurationWeeks} weeks`);
+    log("INFO", "plan", `Plan generated: ${result.phases.length} phases`);
 
     return NextResponse.json({
       id: plan.id,
@@ -188,10 +182,7 @@ export async function GET(
     return NextResponse.json({
       id: plan.id,
       phases,
-      totalDurationWeeks: meta.totalDurationWeeks || 0,
-      totalEstimatedHours: meta.totalEstimatedHours || 0,
-      resourceSummary: meta.resourceSummary || { roles: [], estimatedTeamSize: 0, estimatedBudgetRange: "N/A" },
-      costBreakdown: meta.costBreakdown || null,
+      implementationOptions: meta.implementationOptions || null,
       risks: meta.risks || [],
       confirmed: plan.confirmed,
       createdAt: plan.createdAt,

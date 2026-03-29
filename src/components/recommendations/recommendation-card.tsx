@@ -20,9 +20,17 @@ import {
   Square,
   MessageSquare,
   PackageCheck,
-  PackagePlus,
-  DollarSign,
+  ArrowUpCircle,
 } from "lucide-react";
+
+interface StackOption {
+  approach: string;
+  toolsUsed?: string[];
+  limitations?: string;
+  licensingCost: string;
+  newTools?: string[];
+  advantages?: string;
+}
 
 interface RecommendationCardProps {
   id: string;
@@ -35,12 +43,10 @@ interface RecommendationCardProps {
   selected: boolean;
   comment?: string;
   customizations?: {
-    estimatedWeeks?: number;
     keyBenefits?: string[];
     riskFactors?: string[];
-    techLeverage?: string[];
-    newToolsRequired?: string[];
-    estimatedCostRange?: string;
+    currentStackOption?: StackOption | null;
+    improvedStackOption?: StackOption | null;
   };
   onToggleSelect: (id: string, selected: boolean) => void;
   onSaveComment: (id: string, comment: string) => void;
@@ -101,26 +107,26 @@ export function RecommendationCard({
   const [localComment, setLocalComment] = useState(comment || "");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Sync if parent prop changes (e.g. after regenerate)
   useEffect(() => {
     setLocalComment(comment || "");
   }, [comment]);
 
   function handleCommentChange(value: string) {
     setLocalComment(value);
-    // Debounce save — 800ms after user stops typing
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       onSaveComment(id, value);
     }, 800);
   }
 
-  // Cleanup debounce on unmount
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, []);
+
+  const currentOpt = customizations?.currentStackOption;
+  const improvedOpt = customizations?.improvedStackOption;
 
   return (
     <Card
@@ -158,13 +164,6 @@ export function RecommendationCard({
           <ScoreBar label="Effort" score={effortScore} color="bg-amber-500" />
         </div>
 
-        {customizations?.estimatedWeeks && (
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Clock className="h-3 w-3" />
-            <span>~{customizations.estimatedWeeks} weeks</span>
-          </div>
-        )}
-
         {customizations?.keyBenefits && customizations.keyBenefits.length > 0 && (
           <div className="space-y-1">
             <div className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
@@ -179,44 +178,62 @@ export function RecommendationCard({
           </div>
         )}
 
-        {/* Tech stack leverage */}
-        {customizations?.techLeverage && customizations.techLeverage.length > 0 && (
-          <div className="space-y-1">
-            <div className="flex items-center gap-1 text-xs font-medium text-green-700">
-              <PackageCheck className="h-3 w-3" />
-              Uses Existing Tools
-            </div>
-            <div className="flex flex-wrap gap-1 pl-4">
-              {customizations.techLeverage.map((t) => (
-                <Badge key={t} variant="outline" className="text-[10px] h-5 border-green-300 text-green-700 bg-green-50">
-                  {t}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Two options: Current Stack vs Improved Stack */}
+        {(currentOpt || improvedOpt) && (
+          <div className="space-y-2 pt-1 border-t">
+            {currentOpt && (
+              <div className="rounded-md border border-green-200 bg-green-50/50 p-2.5 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-green-800 flex items-center gap-1">
+                    <PackageCheck className="h-3 w-3" />
+                    Current Stack
+                  </span>
+                  <Badge className="text-[10px] h-4 bg-green-100 text-green-800 border-green-300">
+                    {currentOpt.licensingCost}
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-green-700">{currentOpt.approach}</p>
+                {currentOpt.toolsUsed && currentOpt.toolsUsed.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {currentOpt.toolsUsed.map((t) => (
+                      <Badge key={t} variant="outline" className="text-[9px] h-4 border-green-300 text-green-700">
+                        {t}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+                {currentOpt.limitations && (
+                  <p className="text-[10px] text-green-600 italic">Limitation: {currentOpt.limitations}</p>
+                )}
+              </div>
+            )}
 
-        {customizations?.newToolsRequired && customizations.newToolsRequired.length > 0 && (
-          <div className="space-y-1">
-            <div className="flex items-center gap-1 text-xs font-medium text-amber-700">
-              <PackagePlus className="h-3 w-3" />
-              New Tools Needed
-            </div>
-            <div className="flex flex-wrap gap-1 pl-4">
-              {customizations.newToolsRequired.map((t) => (
-                <Badge key={t} variant="outline" className="text-[10px] h-5 border-amber-300 text-amber-700 bg-amber-50">
-                  {t}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Cost estimate */}
-        {customizations?.estimatedCostRange && (
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <DollarSign className="h-3 w-3" />
-            <span>Tooling cost: {customizations.estimatedCostRange}</span>
+            {improvedOpt && (
+              <div className="rounded-md border border-blue-200 bg-blue-50/50 p-2.5 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-blue-800 flex items-center gap-1">
+                    <ArrowUpCircle className="h-3 w-3" />
+                    Improved Stack
+                  </span>
+                  <Badge className="text-[10px] h-4 bg-blue-100 text-blue-800 border-blue-300">
+                    {improvedOpt.licensingCost}
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-blue-700">{improvedOpt.approach}</p>
+                {improvedOpt.newTools && improvedOpt.newTools.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {improvedOpt.newTools.map((t) => (
+                      <Badge key={t} variant="outline" className="text-[9px] h-4 border-blue-300 text-blue-700">
+                        {t}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+                {improvedOpt.advantages && (
+                  <p className="text-[10px] text-blue-600">{improvedOpt.advantages}</p>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -249,7 +266,6 @@ export function RecommendationCard({
           </div>
         )}
 
-        {/* Show saved comment indicator when collapsed */}
         {!selected && comment && (
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <MessageSquare className="h-3 w-3" />

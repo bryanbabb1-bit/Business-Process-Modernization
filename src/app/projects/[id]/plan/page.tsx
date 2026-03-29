@@ -27,8 +27,7 @@ interface Task {
   title: string;
   description: string;
   recommendationTitle?: string;
-  estimatedHours: number;
-  resources: string[];
+  deliverables?: string[];
   status: string;
 }
 
@@ -37,16 +36,30 @@ interface Phase {
   name: string;
   description: string;
   order: number;
-  durationWeeks: number;
   tasks: Task[];
   dependencies: string[];
   milestones: string[];
 }
 
-interface ResourceSummary {
-  roles: string[];
-  estimatedTeamSize: number;
-  estimatedBudgetRange: string;
+interface NewTool {
+  tool: string;
+  purpose: string;
+  cost: string;
+}
+
+interface ImplementationOptions {
+  currentStack: {
+    description: string;
+    totalLicensingCost: string;
+    toolsLeveraged: string[];
+    limitations: string[];
+  };
+  improvedStack: {
+    description: string;
+    newTools: NewTool[];
+    totalLicensingCost: string;
+    advantages: string[];
+  };
 }
 
 interface Risk {
@@ -55,28 +68,10 @@ interface Risk {
   likelihood: string;
 }
 
-interface NewToolItem {
-  tool: string;
-  purpose: string;
-  estimatedAnnualCost: string;
-  alternatives: string;
-}
-
-interface CostBreakdown {
-  laborCost: string;
-  newToolingCost: string;
-  existingToolsLeveraged: string[];
-  newToolsRequired: NewToolItem[];
-  costSavingsFromReuse: string;
-}
-
 interface PlanData {
   id: string;
   phases: Phase[];
-  totalDurationWeeks: number;
-  totalEstimatedHours: number;
-  resourceSummary: ResourceSummary;
-  costBreakdown?: CostBreakdown | null;
+  implementationOptions?: ImplementationOptions | null;
   risks: Risk[];
   confirmed: boolean;
   createdAt?: string;
@@ -156,8 +151,8 @@ export default function PlanPage() {
             </div>
             <CardTitle>Generate Implementation Plan</CardTitle>
             <CardDescription>
-              AI will create a phased implementation plan based on your selected
-              recommendations, with timelines, resource estimates, and risk assessment.
+              AI will create a phased delivery plan based on your selected
+              recommendations, with two options: current stack vs improved stack.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -184,7 +179,6 @@ export default function PlanPage() {
     );
   }
 
-  // Generating state (overlay if plan already exists)
   if (generating && !plan) {
     return (
       <div className="flex flex-1 items-center justify-center p-6">
@@ -200,6 +194,8 @@ export default function PlanPage() {
 
   if (!plan) return null;
 
+  const totalDeliverables = plan.phases.reduce((sum, p) => sum + p.tasks.length, 0);
+
   return (
     <div className="flex-1 space-y-6 p-6">
       {/* Header */}
@@ -207,8 +203,7 @@ export default function PlanPage() {
         <div>
           <h1 className="text-2xl font-bold">Implementation Plan</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {plan.phases.length} phases over {plan.totalDurationWeeks} weeks —{" "}
-            {plan.totalEstimatedHours} estimated hours
+            {plan.phases.length} phases — {totalDeliverables} deliverables
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -249,18 +244,12 @@ export default function PlanPage() {
         </div>
       )}
 
-      {/* Timeline */}
-      <TimelineView
-        phases={plan.phases}
-        totalDurationWeeks={plan.totalDurationWeeks}
-      />
+      {/* Delivery Sequence */}
+      <TimelineView phases={plan.phases} />
 
-      {/* Resource & Risk Cards */}
+      {/* Options Comparison & Risks */}
       <ResourceEstimate
-        totalDurationWeeks={plan.totalDurationWeeks}
-        totalEstimatedHours={plan.totalEstimatedHours}
-        resourceSummary={plan.resourceSummary}
-        costBreakdown={plan.costBreakdown}
+        implementationOptions={plan.implementationOptions}
         risks={plan.risks}
       />
 

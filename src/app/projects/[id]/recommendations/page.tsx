@@ -34,12 +34,24 @@ interface Rec {
   selected: boolean;
   comment?: string;
   customizations?: {
-    estimatedWeeks?: number;
     keyBenefits?: string[];
     riskFactors?: string[];
-    techLeverage?: string[];
-    newToolsRequired?: string[];
-    estimatedCostRange?: string;
+    currentStackOption?: {
+      approach: string;
+      toolsUsed?: string[];
+      limitations?: string;
+      licensingCost: string;
+      newTools?: string[];
+      advantages?: string;
+    } | null;
+    improvedStackOption?: {
+      approach: string;
+      toolsUsed?: string[];
+      limitations?: string;
+      licensingCost: string;
+      newTools?: string[];
+      advantages?: string;
+    } | null;
     userComment?: string;
   };
 }
