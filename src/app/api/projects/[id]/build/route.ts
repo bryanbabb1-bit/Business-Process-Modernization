@@ -156,7 +156,56 @@ export async function POST(
     const rawResult = await aiJsonRequest<Record<string, unknown>>(
       GENERATE_ARTIFACTS_SYSTEM,
       prompt,
-      { maxTokens: 16384 }
+      {
+        maxTokens: 16384,
+        toolSchema: {
+          type: "object",
+          properties: {
+            packageName: {
+              type: "string",
+              description: "Name for the deliverable package",
+            },
+            summary: {
+              type: "string",
+              description: "1-2 sentence summary of the package",
+            },
+            artifacts: {
+              type: "array",
+              description: "Array of deliverable files with full content",
+              items: {
+                type: "object",
+                properties: {
+                  fileName: { type: "string" },
+                  category: {
+                    type: "string",
+                    enum: ["guide", "config", "spec", "scaffold", "report"],
+                  },
+                  description: { type: "string" },
+                  content: { type: "string", description: "Full file content" },
+                },
+                required: ["fileName", "category", "description", "content"],
+              },
+            },
+            configValues: {
+              type: "array",
+              description: "Configurable values the client needs to set",
+              items: {
+                type: "object",
+                properties: {
+                  key: { type: "string" },
+                  label: { type: "string" },
+                  description: { type: "string" },
+                  type: { type: "string" },
+                  defaultValue: { type: "string" },
+                  required: { type: "boolean" },
+                },
+                required: ["key", "label", "description", "type", "defaultValue", "required"],
+              },
+            },
+          },
+          required: ["packageName", "summary", "artifacts", "configValues"],
+        },
+      }
     );
 
     // Normalize the AI response — it may nest data under various keys

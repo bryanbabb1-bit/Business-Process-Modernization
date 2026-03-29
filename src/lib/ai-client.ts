@@ -69,7 +69,7 @@ function extractJson(text: string): string {
 export async function aiJsonRequest<T>(
   systemPrompt: string,
   userPrompt: string,
-  options?: { maxTokens?: number }
+  options?: { maxTokens?: number; toolSchema?: Record<string, unknown> }
 ): Promise<T> {
   const anthropic = getClient();
   const maxTokens = options?.maxTokens ?? 4096;
@@ -77,7 +77,12 @@ export async function aiJsonRequest<T>(
   log("INFO", "ai-client", `Sending request (max ${maxTokens} tokens)`);
 
   // Use tool_use to guarantee structured JSON output.
-  // We define a tool with a permissive schema and force the model to call it.
+  // Callers can pass an explicit toolSchema to guide the AI on required fields.
+  const inputSchema = options?.toolSchema ?? {
+    type: "object" as const,
+    additionalProperties: true,
+  };
+
   const message = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
     max_tokens: maxTokens,
@@ -88,10 +93,7 @@ export async function aiJsonRequest<T>(
         name: "deliver_json",
         description:
           "Deliver the complete JSON result. You MUST call this tool with your full response as the data parameter.",
-        input_schema: {
-          type: "object" as const,
-          additionalProperties: true,
-        },
+        input_schema: inputSchema,
       },
     ],
     tool_choice: { type: "tool" as const, name: "deliver_json" },
