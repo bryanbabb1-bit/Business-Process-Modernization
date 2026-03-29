@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useRef, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -17,6 +18,7 @@ import {
   Wrench,
   CheckSquare,
   Square,
+  MessageSquare,
 } from "lucide-react";
 
 interface RecommendationCardProps {
@@ -28,12 +30,14 @@ interface RecommendationCardProps {
   impactScore: number;
   dependencies: string[];
   selected: boolean;
+  comment?: string;
   customizations?: {
     estimatedWeeks?: number;
     keyBenefits?: string[];
     riskFactors?: string[];
   };
   onToggleSelect: (id: string, selected: boolean) => void;
+  onSaveComment: (id: string, comment: string) => void;
 }
 
 const categoryConfig: Record<
@@ -81,21 +85,48 @@ export function RecommendationCard({
   impactScore,
   dependencies,
   selected,
+  comment,
   customizations,
   onToggleSelect,
+  onSaveComment,
 }: RecommendationCardProps) {
   const config = categoryConfig[category] || categoryConfig.medium_effort;
   const CategoryIcon = config.icon;
+  const [localComment, setLocalComment] = useState(comment || "");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sync if parent prop changes (e.g. after regenerate)
+  useEffect(() => {
+    setLocalComment(comment || "");
+  }, [comment]);
+
+  function handleCommentChange(value: string) {
+    setLocalComment(value);
+    // Debounce save — 800ms after user stops typing
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      onSaveComment(id, value);
+    }, 800);
+  }
+
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
 
   return (
     <Card
       className={cn(
-        "cursor-pointer transition-all hover:shadow-md",
+        "transition-all hover:shadow-md",
         selected && "ring-2 ring-primary shadow-md"
       )}
-      onClick={() => onToggleSelect(id, !selected)}
     >
-      <CardHeader className="pb-3">
+      <CardHeader
+        className="pb-3 cursor-pointer"
+        onClick={() => onToggleSelect(id, !selected)}
+      >
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             {selected ? (
@@ -146,6 +177,36 @@ export function RecommendationCard({
           <div className="flex items-start gap-1 text-xs text-muted-foreground">
             <Wrench className="h-3 w-3 mt-0.5 shrink-0" />
             <span>Depends on: {dependencies.join(", ")}</span>
+          </div>
+        )}
+
+        {/* Comment section — visible when selected */}
+        {selected && (
+          <div className="space-y-1.5 pt-1 border-t">
+            <label
+              htmlFor={`comment-${id}`}
+              className="flex items-center gap-1 text-xs font-medium text-muted-foreground"
+            >
+              <MessageSquare className="h-3 w-3" />
+              Notes for implementation
+            </label>
+            <textarea
+              id={`comment-${id}`}
+              value={localComment}
+              onChange={(e) => handleCommentChange(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              placeholder="Add context, constraints, or priorities for the AI planner..."
+              className="w-full rounded-md border bg-background px-2.5 py-1.5 text-xs placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+              rows={2}
+            />
+          </div>
+        )}
+
+        {/* Show saved comment indicator when collapsed */}
+        {!selected && comment && (
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <MessageSquare className="h-3 w-3" />
+            <span className="truncate">Note: {comment}</span>
           </div>
         )}
       </CardContent>

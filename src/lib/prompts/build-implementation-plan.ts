@@ -65,6 +65,7 @@ Planning rules:
 - Include realistic hour estimates
 - Resource roles should be specific (e.g., "Full-Stack Developer", not just "Developer")
 - totalDurationWeeks and totalEstimatedHours should be accurate sums
+- If a recommendation includes "userNotes", incorporate that feedback into the task planning (e.g., constraints, priorities, scope adjustments, or context the user provided)
 
 Return ONLY the JSON object.`;
 }

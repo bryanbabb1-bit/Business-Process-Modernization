@@ -150,36 +150,56 @@ export async function GET(
   }
 }
 
-// PATCH /api/projects/[id]/recommendations - Toggle selected status
+// PATCH /api/projects/[id]/recommendations - Update selected status or comment
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    let body: { recId?: string; selected?: boolean };
+    let body: { recId?: string; selected?: boolean; comment?: string };
     try {
       body = await request.json();
     } catch {
       return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
     }
 
-    const { recId, selected } = body;
-    if (!recId || typeof selected !== "boolean") {
+    const { recId, selected, comment } = body;
+    if (!recId) {
       return NextResponse.json(
-        { error: "Missing recId or selected" },
+        { error: "Missing recId" },
         { status: 400 }
       );
     }
 
+    // Build update data
+    const updateData: { selected?: boolean; customizations?: string } = {};
+
+    if (typeof selected === "boolean") {
+      updateData.selected = selected;
+    }
+
+    if (typeof comment === "string") {
+      // Merge comment into existing customizations
+      const existing = await prisma.recommendation.findUnique({
+        where: { id: recId },
+        select: { customizations: true },
+      });
+      const current = safeParse(existing?.customizations || "{}", {}) as Record<string, unknown>;
+      updateData.customizations = JSON.stringify({
+        ...current,
+        userComment: comment,
+      });
+    }
+
     const rec = await prisma.recommendation.update({
       where: { id: recId },
-      data: { selected },
+      data: updateData,
     });
 
     return NextResponse.json({
       ...rec,
-      dependencies: JSON.parse(rec.dependencies),
-      customizations: JSON.parse(rec.customizations),
+      dependencies: safeParse(rec.dependencies, []),
+      customizations: safeParse(rec.customizations, {}),
     });
   } catch (error) {
     logError("PATCH /api/projects/[id]/recommendations", error);

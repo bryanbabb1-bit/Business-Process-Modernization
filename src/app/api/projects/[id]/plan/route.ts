@@ -72,14 +72,21 @@ export async function POST(
       `Generating plan for "${project.clientName}" with ${project.recommendations.length} selected recommendations`
     );
 
-    const selectedRecs = project.recommendations.map((r) => ({
-      title: r.title,
-      description: r.description,
-      category: r.category,
-      effortScore: r.effortScore,
-      impactScore: r.impactScore,
-      dependencies: JSON.parse(r.dependencies),
-    }));
+    const selectedRecs = project.recommendations.map((r) => {
+      const customizations = JSON.parse(r.customizations || "{}");
+      const rec: Record<string, unknown> = {
+        title: r.title,
+        description: r.description,
+        category: r.category,
+        effortScore: r.effortScore,
+        impactScore: r.impactScore,
+        dependencies: JSON.parse(r.dependencies),
+      };
+      if (customizations.userComment) {
+        rec.userNotes = customizations.userComment;
+      }
+      return rec;
+    });
 
     const prompt = buildPlanPrompt(
       project.clientName,

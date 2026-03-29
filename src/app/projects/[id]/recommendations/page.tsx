@@ -32,10 +32,12 @@ interface Rec {
   impactScore: number;
   dependencies: string[];
   selected: boolean;
+  comment?: string;
   customizations?: {
     estimatedWeeks?: number;
     keyBenefits?: string[];
     riskFactors?: string[];
+    userComment?: string;
   };
 }
 
@@ -58,8 +60,12 @@ export default function RecommendationsPage() {
     try {
       const res = await fetch(`/api/projects/${id}/recommendations`);
       if (!res.ok) throw new Error("Failed to fetch");
-      const data = await res.json();
-      if (mountedRef.current) setRecs(data);
+      const data: Rec[] = await res.json();
+      const mapped = data.map((r) => ({
+        ...r,
+        comment: r.customizations?.userComment || "",
+      }));
+      if (mountedRef.current) setRecs(mapped);
     } catch {
       // ignore fetch errors on load
     } finally {
@@ -82,8 +88,12 @@ export default function RecommendationsPage() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Failed to generate recommendations");
       }
-      const data = await res.json();
-      if (mountedRef.current) setRecs(data);
+      const data: Rec[] = await res.json();
+      const mapped = data.map((r) => ({
+        ...r,
+        comment: r.customizations?.userComment || "",
+      }));
+      if (mountedRef.current) setRecs(mapped);
     } catch (err) {
       if (mountedRef.current) {
         setError(err instanceof Error ? err.message : "Generation failed");
@@ -114,6 +124,22 @@ export default function RecommendationsPage() {
       setRecs((prev) =>
         prev.map((r) => (r.id === recId ? { ...r, selected: !selected } : r))
       );
+    }
+  }
+
+  async function saveComment(recId: string, comment: string) {
+    // Optimistic update
+    setRecs((prev) =>
+      prev.map((r) => (r.id === recId ? { ...r, comment } : r))
+    );
+    try {
+      await fetch(`/api/projects/${id}/recommendations`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recId, comment }),
+      });
+    } catch {
+      // Comment save is best-effort — don't revert UI
     }
   }
 
@@ -244,6 +270,7 @@ export default function RecommendationsPage() {
         <RecommendationGrid
           recommendations={recs}
           onToggleSelect={toggleSelect}
+          onSaveComment={saveComment}
         />
       )}
 

@@ -14,6 +14,7 @@ interface Rec {
   impactScore: number;
   dependencies: string[];
   selected: boolean;
+  comment?: string;
   customizations?: {
     estimatedWeeks?: number;
     keyBenefits?: string[];
@@ -24,6 +25,7 @@ interface Rec {
 interface RecommendationGridProps {
   recommendations: Rec[];
   onToggleSelect: (id: string, selected: boolean) => void;
+  onSaveComment: (id: string, comment: string) => void;
 }
 
 const FILTERS = [
@@ -37,6 +39,7 @@ const FILTERS = [
 export function RecommendationGrid({
   recommendations,
   onToggleSelect,
+  onSaveComment,
 }: RecommendationGridProps) {
   const [filter, setFilter] = useState<string>("all");
 
@@ -93,6 +96,7 @@ export function RecommendationGrid({
               key={r.id}
               {...r}
               onToggleSelect={onToggleSelect}
+              onSaveComment={onSaveComment}
             />
           ))}
         </div>
