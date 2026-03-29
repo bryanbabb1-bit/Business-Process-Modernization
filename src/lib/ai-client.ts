@@ -41,11 +41,21 @@ export async function aiJsonRequest<T>(
     throw new Error("No text response from AI");
   }
 
-  // Extract JSON from response (handle markdown code blocks)
+  // Extract JSON from response (handle markdown code blocks with any language tag)
   let jsonStr = textBlock.text.trim();
-  const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const jsonMatch = jsonStr.match(/```\w*\s*([\s\S]*?)```/);
   if (jsonMatch) {
     jsonStr = jsonMatch[1].trim();
+  }
+
+  // If still not starting with { or [, try to find the first JSON object
+  if (!jsonStr.startsWith("{") && !jsonStr.startsWith("[")) {
+    const objStart = jsonStr.indexOf("{");
+    const arrStart = jsonStr.indexOf("[");
+    const start = objStart === -1 ? arrStart : arrStart === -1 ? objStart : Math.min(objStart, arrStart);
+    if (start !== -1) {
+      jsonStr = jsonStr.slice(start);
+    }
   }
 
   try {
