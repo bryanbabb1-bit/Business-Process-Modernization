@@ -168,7 +168,7 @@ export default function DocumentsPage() {
 
         <Card className="lg:col-span-3 min-h-[400px]">
           <CardContent className="h-full p-0">
-            <DocumentPreview document={selectedDoc} />
+            <DocumentPreview document={selectedDoc} projectId={projectId} />
           </CardContent>
         </Card>
       </div>
