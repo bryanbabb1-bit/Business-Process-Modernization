@@ -66,13 +66,36 @@ async function extractSpreadsheet(filePath: string): Promise<string> {
 
     for (const sheetName of workbook.SheetNames) {
       const sheet = workbook.Sheets[sheetName];
+      // Convert to array of arrays, skipping blank rows
+      const rows: unknown[][] = XLSX.utils.sheet_to_json(sheet, {
+        header: 1,
+        defval: "",
+        blankrows: false,
+      });
+
+      if (rows.length === 0) continue;
+
       lines.push(`--- Sheet: ${sheetName} ---`);
-      const csv = XLSX.utils.sheet_to_csv(sheet);
-      lines.push(csv);
+
+      for (const row of rows) {
+        // Filter out empty trailing cells, then join with " | "
+        const cells = (row as unknown[]).map((c) =>
+          c === null || c === undefined ? "" : String(c).trim()
+        );
+        // Remove trailing empty cells
+        while (cells.length > 0 && cells[cells.length - 1] === "") {
+          cells.pop();
+        }
+        // Skip entirely empty rows
+        if (cells.length === 0 || cells.every((c) => c === "")) continue;
+
+        lines.push(cells.join(" | "));
+      }
+
       lines.push("");
     }
 
-    return lines.join("\n") || "[No data found in spreadsheet]";
+    return lines.join("\n").trim() || "[No data found in spreadsheet]";
   } catch (error) {
     console.error("Spreadsheet extraction error:", error);
     return `[Error extracting spreadsheet: ${error instanceof Error ? error.message : "unknown"}]`;
